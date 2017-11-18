@@ -1,0 +1,24 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>JSON Form</title>
+
+<link href="form.css" rel="stylesheet" type="text/css"> 
+</head>
+
+<body>
+	<div class="form-json"></div>
+		
+	<script src="main.js"></script>
+	<script>
+		var form = new Form({
+			data: {
+				url: 'get.json'
+			},
+			selector: {
+				form: '.form-json'
+			}
+		});
+	</script>
+</body>
+</html>

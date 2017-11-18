@@ -1,0 +1,53 @@
+{
+	"prvId":2751,
+	"prvName":"Банк развития бизнеса",
+	"prvDesc":"ООО \"Банк развития бизнеса\"",
+	"fields":[
+	   {
+		  "orderNum":1,
+		  "fieldId":"accountType",
+		  "fieldType":"tSelectRadio",
+		  "fieldLabel":"Тип счета",
+		  "preValues":[
+			 {
+				"orderNum":1,
+				"value":"cardNum",
+				"caption":"Номер карты"
+			 },
+			 {
+				"orderNum":2,
+				"value":"accNum",
+				"caption":"Номер счета"
+			 }
+		  ]
+	   },
+	   {
+		  "orderNum":3,
+		  "fieldId":"cardNumber",
+		  "fieldType":"tText",
+		  "fieldLabel":"Номер карты",
+		  "preValues":null
+	   },
+	   {
+		  "orderNum":4,
+		  "fieldId":"cardDate",
+		  "fieldType":"tDate",
+		  "fieldLabel":"Дата действия карты",
+		  "preValues":null
+	   },
+	   {
+		  "orderNum":5,
+		  "fieldId":"accountNumber",
+		  "fieldType":"tText",
+		  "fieldLabel":"Номер счета",
+		  "preValues":null
+	   },
+	   {
+		  "orderNum":7,
+		  "fieldId":"amount",
+		  "fieldType":"tAmount",
+		  "fieldLabel":"Сумма платежа",
+		  "preValues":null
+	   }
+	]
+ }
