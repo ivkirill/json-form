@@ -22,6 +22,10 @@
   padding: 10px 0;
 }
 
+.form-group.hide {
+  display: none;
+}
+
 .form-group-title {
   margin-bottom: 5px;
   font-size: 13px;
@@ -66,4 +70,8 @@
 
 .button-submit:active {
   box-shadow: inset 0 0 20px #2b2b2b;  
+}
+
+.ui-datepicker-calendar {
+  display: none;  
 }

@@ -20,7 +20,26 @@
 
 		return obj;
 	}
-
+	
+	// немного расширим прототип Element, чтобы можно было находить родителей
+	Element.prototype.parents = function(selector) {
+		var elements = [];
+		var elem = this;
+		var ishaveselector = selector !== undefined;
+	 
+		while ((elem = elem.parentElement) !== null) {
+			if (elem.nodeType !== Node.ELEMENT_NODE) {
+				continue;
+			}
+	 
+			if (!ishaveselector || elem.matches(selector)) {
+				elements.push(elem);
+			}
+		}
+	 
+		return elements;
+	};
+	
 	// функция-конструтор формы
 	var Form = function(config) {
 		// дефолтные параметры
@@ -59,6 +78,8 @@
 
 		// генерация формы
 		this.createForm = function() {
+			var self = this;
+			
 			// переданный элемент на обработку
 			this.wrapper = document.querySelector(config.selector.form);
 			
@@ -73,8 +94,46 @@
 			this.form.setAttribute('method', config.method);
 			this.form.setAttribute('action', config.action);
 			this.form.setAttribute('validate','validate');
+			
+			// обработка submit формы
+			this.form.onsubmit = function(e) {
+				self.submit();
+				e.preventDefault();
+			};
 
 			return this;
+		}
+		
+		// отправка формы
+		this.submit = function() {
+			var self = this;
+			
+			// создаем формдату
+			var formData = new FormData(this.form);
+			
+			var xhr = new XMLHttpRequest();
+			var data = null;
+
+			// обертка try для того чтобы работало на локалке
+			try {
+				// делаем синхронный запрос
+				xhr.open('POST', this.form.getAttribute('action'), false);
+				xhr.send(formData);
+			
+				// если ответ с ошибкой
+				if (xhr.status != 200) {
+					alert("Форма отправлена");
+				}
+				// если все ок
+				else {
+					alert("Форма отправлена");
+				}
+			}
+			catch(e) {
+				// отправляем форму без ajax, можно посмотреть переданные данные в Network
+				self.form.submit();
+			}
+
 		}
 
 		// устанавливаем данные
@@ -147,9 +206,17 @@
 				this.form.append(input);
 				return;
 			}
+			
+			
+			// хардкод для отображения только радиокнопок
+			var isVisible = (/(cardDate|accountNumber|cardNumber)/.test(data.fieldId) ) ? false : true;
 
 			// создаем группу для поля
-			var group = this.createRow(data.orderNum);
+			var group = this.createGroup(data.orderNum);
+			
+			// управляем отображением группы
+			this.setGroupVisibility(group.group, isVisible);
+			
 			// добавляем текст в заголовок элемента group.title
 			var title = document.createElement('span');
 			title.innerText = data.fieldLabel;
@@ -174,17 +241,13 @@
 					input.setAttribute('type', type);
 					input.setAttribute('name', data.fieldId);
 					input.setAttribute('value', data.preValues[i].value);
-					input.setAttribute('require', 'require');
+					input.setAttribute('required', '');
 					
 					// событие выбора для элемента
 					input.onchange = function() {
-						console.log(self);
-						
-						console.log( self.groups );
+						// хардкод для выбора типа платежа
+						self.toggleType( ( this.value == 'cardNum' ) ? 'card' : 'acc' )
 					}
-					
-					// поставим первый элемент активным
-					if(i === 0) input.setAttribute('checked', 'checked');
 					
 					caption.innerHTML = data.preValues[i].caption;
 					
@@ -192,8 +255,12 @@
 					label.append( input );
 					label.append( caption );
 					
-					// добавляем labal в DOM group.holder
+					// добавляем label в DOM group.holder
 					group.holder.append(label);
+					
+					// управляем доступностью поля
+					this.setFieldAccessibility(input, isVisible);
+					
 				};
 			}
 			
@@ -202,6 +269,7 @@
 				var input = document.createElement('input');
 				input.setAttribute('type', type);
 				input.setAttribute('name', data.fieldId);
+				input.setAttribute('required', '');
 				
 				/*
 				* если тип number, добавим несколько доп атрибутов
@@ -214,6 +282,7 @@
 					
 					// type = number не дает вводить точку с клавиатуры, придется сделать его text
 					input.setAttribute('type', 'text');
+
 					
 					// функция автозамены при вводе символов
 					input.oninput = function(e) {
@@ -230,13 +299,75 @@
 					}
 				}
 				
+				/*
+				* если тип month, запусть обработку $.datepicker
+				* # по идее мы должны сделать это только для всех tAmount,
+				* а остальные number оставлять нативными
+				*/
+				else if( type == 'month' ) {
+					// type = number не дает вводить точку с клавиатуры, придется сделать его text
+					input.setAttribute('type', 'text');					
+					
+					// # не подключена локализация русского
+					$(input).datepicker({
+						changeMonth: true,
+						changeYear: true,
+						showButtonPanel: true,
+						dateFormat: 'MM yy',
+						onClose: function(dateText, inst) { 
+							$(this).datepicker('setDate', new Date(inst.selectedYear, inst.selectedMonth, 1));
+						}
+					});
+				}				
+				
 				group.holder.append(input);	
+				
+				// управляем доступностью поля
+				this.setFieldAccessibility(input, isVisible);
 			}
 		};
+		
+		// управление отображением полей и свойством disabled
+		this.setGroupVisibility = function(group, visible) {
+			if(visible) group.classList.remove('hide');
+			else group.classList.add('hide');
+		}
+		
+		// управление доступностью поля
+		this.setFieldAccessibility = function(field, enabled) {
+			if(enabled) field.removeAttribute('disabled');
+			else field.setAttribute('disabled', 'disabled');
+		};
 
-		// генерация обертки элемента
-		this.createRow = function(num) {
-			// строка
+		this.toggleType = function(type) {
+			var self = this;
+			// переменные переключения полей
+			var toggle = ( type == 'card' ) ? true : false;
+			
+			console.log(type, toggle);
+			
+			// массив связанных полей карты
+			['cardNumber', 'cardDate'].forEach(function(name) {
+				var field = self.form.querySelector('input[name="'+name+'"]');
+				var group = field.parents('.form-group')[0];
+				console.log(field, group);
+				
+				self.setGroupVisibility(group, toggle);
+				self.setFieldAccessibility(field, toggle);
+			});
+			
+			// массив связанных полей счета
+			['accountNumber'].forEach(function(name) {
+				var field = self.form.querySelector('input[name="'+name+'"]');
+				var group = field.parents('.form-group')[0];
+				self.setGroupVisibility(group, !toggle);
+				self.setFieldAccessibility(field, !toggle);
+			});			
+		}		
+		
+		// генерация обертки группы элемента
+		this.createGroup = function(num, visible) {
+			// группа
 			var group = document.createElement('div');
 			// заголовок
 			var title = document.createElement('div');
@@ -253,7 +384,7 @@
 			group.append( holder );
 			
 			// добавляем обертку во внутреннюю коллекцию оберток
-			// не проверяем дубли в orderNum, при одинаковых значенияем остается только последний элемент
+			// не проверяем дубли в orderNum, при одинаковых значенияем остается только последним переданный элемент
 			this.groups[num || 0] = group;
 			
 			return {
@@ -376,4 +507,4 @@ var test_json = {
 		  "preValues":null
 	   }
 	]
- }
+};
