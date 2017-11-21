@@ -282,15 +282,16 @@
 					
 					// type = number не дает вводить точку с клавиатуры, придется сделать его text
 					input.setAttribute('type', 'text');
-
 					
 					// функция автозамены при вводе символов
 					input.oninput = function(e) {
 						this.value = this.value.toString()
 						// замена запятой
 						.replace(/\,/g,'.')
+						// только один ноль в начале
+						.replace(/^0[0-9]+/g,'0')
 						// убиваем все символы кроме цифр и точки
-						.replace(/[^0-9.]/g,'')
+						.replace(/([^0-9\.]|^\.)/g,'')
 						// сохраняем число по паттерну и только его
 						.replace(/(^\d+)(\.?)(\d{0,2})?(.*)?$/g, function(match, a, b, c, d) {
 							console.log(match, a, b, c, d);
@@ -342,26 +343,25 @@
 		this.toggleType = function(type) {
 			var self = this;
 			// переменные переключения полей
-			var toggle = ( type == 'card' ) ? true : false;
-			
-			console.log(type, toggle);
+			var toggle1 = false;
+			var toggle2 = false;
+			if ( type == 'card' ) toggle1 = true;
+			if ( type == 'acc' ) toggle2 = true;
 			
 			// массив связанных полей карты
 			['cardNumber', 'cardDate'].forEach(function(name) {
 				var field = self.form.querySelector('input[name="'+name+'"]');
 				var group = field.parents('.form-group')[0];
-				console.log(field, group);
-				
-				self.setGroupVisibility(group, toggle);
-				self.setFieldAccessibility(field, toggle);
+				self.setGroupVisibility(group, toggle1);
+				self.setFieldAccessibility(field, toggle1);
 			});
 			
 			// массив связанных полей счета
 			['accountNumber'].forEach(function(name) {
 				var field = self.form.querySelector('input[name="'+name+'"]');
 				var group = field.parents('.form-group')[0];
-				self.setGroupVisibility(group, !toggle);
-				self.setFieldAccessibility(field, !toggle);
+				self.setGroupVisibility(group, toggle2);
+				self.setFieldAccessibility(field, toggle2);
 			});			
 		}		
 		
@@ -384,8 +384,10 @@
 			group.append( holder );
 			
 			// добавляем обертку во внутреннюю коллекцию оберток
-			// не проверяем дубли в orderNum, при одинаковых значенияем остается только последним переданный элемент
-			this.groups[num || 0] = group;
+			this.groups.push({
+				dom: group,
+				index: num || 0
+			});
 			
 			return {
 				group: group,
@@ -395,11 +397,18 @@
 		}
 		
 		// вставляем обертки в форму
-		this.insertRows = function() {
+		this.insertGroups = function() {
 			var self = this;
 			
-			this.groups.forEach(function(group) {
-				if( group ) self.form.append( group );
+			console.log(this.groups);
+			
+			// сортирем группы
+			this.groups.sort(function(a,b) {
+				return a.index - b.index;
+			})
+			// вставляем в DOM формы
+			.forEach(function(group) {
+				if( group ) self.form.append( group.dom );
 			});
 		}
 		
@@ -441,7 +450,7 @@
 			this.createFields(this.json);
 			
 			// вставляем обертки в форму
-			this.insertRows();
+			this.insertGroups();
 			
 			// вставляем кнопку Submit
 			this.createSubmit();
